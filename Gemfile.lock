@@ -55,6 +55,7 @@ GEM
     mustermann (1.0.3)
     nokogiri (1.8.4)
       mini_portile2 (~> 2.3.0)
+    puma (3.12.0)
     rack (2.0.5)
     rack-protection (2.0.3)
       rack
@@ -91,6 +92,7 @@ DEPENDENCIES
   aws-sdk-s3 (~> 1)
   dotenv-rails
   json
+  puma
   sinatra
   sinatra-cross_origin
 
