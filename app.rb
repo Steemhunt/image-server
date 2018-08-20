@@ -17,12 +17,16 @@ set :expose_headers, "location,link"
 
 # Routes
 get '/upload' do
-  "
-  <form action='/upload' method='post' enctype='multipart/form-data'>
-    <input type='file' name='image' value='image-file'></input>
-    <input type='submit'/>
-  </form>
-  "
+  if Sinatra::Base.production?
+    status 404
+  else
+    "
+    <form action='/upload' method='post' enctype='multipart/form-data'>
+      <input type='file' name='image' value='image-file'></input>
+      <input type='submit'/>
+    </form>
+    "
+  end
 end
 
 post '/upload' do
