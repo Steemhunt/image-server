@@ -43,7 +43,7 @@ end
 
 # Modules
 class S3Uploader
-  attr_accessor :bucket_name, :s3, :bucket, :space, :name, :file, :path, :link, :temp_mp4, :is_gif
+  attr_accessor :bucket_name, :s3, :bucket, :space, :name, :uid, :file, :path, :link, :temp_mp4
 
   def initialize(bucket_name)
     @bucket_name = bucket_name
@@ -52,15 +52,15 @@ class S3Uploader
   end
 
   def upload(image)
-    if image[:filename] =~ /.gif/
+    if image[:filename] =~ /\.gif$/
       converted = gif_to_mp4(image)
       @name, @file = converted[:filename], converted[:file]
     else
       @name, @file = image[:filename], image[:tempfile]
     end
 
-    uid = "#{SecureRandom.hex(4)}-#{name}"
-    path = "#{Sinatra::Base.production? ? "production" : "development"}/steemhunt/#{Time.now.strftime('%Y-%m-%d')}/#{uid}"
+    @uid = "#{SecureRandom.hex(4)}-#{name}"
+    @path = "#{Sinatra::Base.production? ? "production" : "development"}/steemhunt/#{Time.now.strftime('%Y-%m-%d')}/#{uid}"
 
     @link = "https://s3-us-west-2.amazonaws.com/#{bucket_name}/#{path}"
     @space = bucket.object(path)
@@ -76,7 +76,7 @@ class S3Uploader
 
   def gif_to_mp4(image)
     temp_mp4 = './temp/temp.mp4'
-    `osx/ffmpeg -i #{image[:tempfile].path} -movflags faststart -pix_fmt yuv420p -vf "scale=300:200" #{temp_mp4}`
+    `#{Sinatra::Base.production? ? 'ubuntu' : 'osx'}/ffmpeg -i #{image[:tempfile].path} -movflags faststart -pix_fmt yuv420p -vf "scale=300:200" #{temp_mp4}`
     mp4_file = File.open(temp_mp4)
 
     return {
@@ -91,8 +91,8 @@ class S3Uploader
 
   def render_json
     {
-      data: {
-        name: name, link: link
+      response: {
+        name: name, link: link, uid: uid
       },
       success: true,
       status: 200
