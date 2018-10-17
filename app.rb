@@ -82,7 +82,6 @@ class S3Uploader
 end
 
 class FileEncoder
-  FFMPEG_PATH = "#{Sinatra::Base.production? ? 'ubuntu' : 'osx'}/ffmpeg"
 
   def to_mp4(target_file, options = {})
     default_options = {
@@ -93,9 +92,9 @@ class FileEncoder
     temp_mp4 = './temp/temp.mp4'
 
     if options[:minify] # 92~3% minificaiton.
-      `#{FFMPEG_PATH} -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
+      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
     else
-      `#{FFMPEG_PATH} -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" #{temp_mp4}`
+      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" #{temp_mp4}`
     end
 
     mp4_file = File.open(temp_mp4)
