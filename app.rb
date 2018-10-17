@@ -33,9 +33,25 @@ end
 post '/upload' do
   content_type :json
   uploader = S3Uploader.new('huntimages')
+  encoder = FileEncoder.new
+  image = params[:image]
 
-  if res = uploader.upload(params[:image])
-    res
+  uid, filename, file = "#{Time.now.strftime('%Y-%m-%d')}/#{SecureRandom.hex(4)}-#{image[:filename]}", image[:filename], image[:tempfile]
+
+  if filename =~ /\.gif$/
+    uploader.upload(uid.gsub('.gif', '-240x240.mp4'), encoder.to_mp4(file, { minify: true })[:file]) # upload minified
+    uid, filename, file = uid.gsub('.gif', '.mp4'), filename.gsub('.gif', '.mp4'), encoder.to_mp4(file)[:file]
+  end
+
+  if res = uploader.upload(uid, file)
+    File.unlink(file) # unlink image[:tempfile] or transformed temp.mp4 or minified temp.mp4
+    return {
+      response: {
+        name: filename, uid: uid, link: res[:link]
+      },
+      success: true,
+      status: 200
+    }.to_json
   else
     status 500
   end
@@ -43,7 +59,7 @@ end
 
 # Modules
 class S3Uploader
-  attr_accessor :bucket_name, :s3, :bucket, :space, :name, :uid, :file, :path, :link, :temp_mp4
+  attr_accessor :s3, :bucket, :bucket_name
 
   def initialize(bucket_name)
     @bucket_name = bucket_name
@@ -51,51 +67,41 @@ class S3Uploader
     @bucket = s3.bucket(bucket_name)
   end
 
-  def upload(image)
-    if image[:filename] =~ /\.gif$/
-      converted = gif_to_mp4(image)
-      @name, @file = converted[:filename], converted[:file]
-    else
-      @name, @file = image[:filename], image[:tempfile]
-    end
+  def upload(uid, file)
+    path = "#{Sinatra::Base.production? ? "production" : "development"}/steemhunt/#{uid}"
 
-    @uid = "#{SecureRandom.hex(4)}-#{name}"
-    @path = "#{Sinatra::Base.production? ? "production" : "development"}/steemhunt/#{Time.now.strftime('%Y-%m-%d')}/#{uid}"
-
-    @link = "https://s3-us-west-2.amazonaws.com/#{bucket_name}/#{path}"
-    @space = bucket.object(path)
-    if space.upload_file(file, acl:'public-read')
-      File.unlink(file)
-      return render_json
+    if bucket.object(path).upload_file(file, acl: 'public-read')
+      return {
+        link: "https://s3-us-west-2.amazonaws.com/#{bucket_name}/#{path}"
+      }
     else
       return false
     end
   end
 
-  private
+end
 
-  def gif_to_mp4(image)
+class FileEncoder
+  FFMPEG_PATH = "#{Sinatra::Base.production? ? 'ubuntu' : 'osx'}/ffmpeg"
+
+  def to_mp4(target_file, options = {})
+    default_options = {
+      minify: false
+    }
+    options = default_options.merge!(options)
+
     temp_mp4 = './temp/temp.mp4'
-    `#{Sinatra::Base.production? ? 'ubuntu' : 'osx'}/ffmpeg -i #{image[:tempfile].path} -movflags faststart -pix_fmt yuv420p -vf "scale=300:200" #{temp_mp4}`
+
+    if options[:minify] # 92~3% minificaiton.
+      `#{FFMPEG_PATH} -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
+    else
+      `#{FFMPEG_PATH} -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" #{temp_mp4}`
+    end
+
     mp4_file = File.open(temp_mp4)
 
     return {
-      file: mp4_file,
-      filename: image[:filename].gsub('.gif', '.mp4')
+      file: mp4_file
     }
-  end
-
-  def destroy_temp
-    File.unlink(temp_mp4)
-  end
-
-  def render_json
-    {
-      response: {
-        name: name, link: link, uid: uid
-      },
-      success: true,
-      status: 200
-    }.to_json
   end
 end
