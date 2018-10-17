@@ -44,7 +44,6 @@ post '/upload' do
   end
 
   if res = uploader.upload(uid, file)
-    File.unlink(file) # unlink image[:tempfile] or transformed temp.mp4 or minified temp.mp4
     return {
       response: {
         name: filename, uid: uid, link: res[:link]
@@ -71,6 +70,7 @@ class S3Uploader
     path = "#{Sinatra::Base.production? ? "production" : "development"}/steemhunt/#{uid}"
 
     if bucket.object(path).upload_file(file, acl: 'public-read')
+      File.unlink(file)
       return {
         link: "https://s3-us-west-2.amazonaws.com/#{bucket_name}/#{path}"
       }
@@ -89,7 +89,7 @@ class FileEncoder
     }
     options = default_options.merge!(options)
 
-    temp_mp4 = './temp/temp.mp4'
+    temp_mp4 = "./temp/#{SecureRandom.hex(4)}.mp4"
 
     if options[:minify] # 92~3% minificaiton.
       `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
