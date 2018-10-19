@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 gem 'sinatra'
-gem 'sinatra-cross_origin'
+gem 'sinatra-cors'
 gem 'aws-sdk-s3', '~> 1'
 gem 'dotenv-rails', groups: [:development, :test]
 gem 'json'

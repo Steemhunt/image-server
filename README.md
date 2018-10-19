@@ -1,13 +1,17 @@
-## Steemhunt's image posting server.
+# Steemhunt image processing server
 
-ffmpeg version : 4.0.2
+### Dependencies
+- ruby 2.5.1
+- ffmpeg version : 4.0.2
 
-> development
+### development
 ```ruby
-ruby app.rb
+gem install bundler
+bundle
+bundle exec ruby app.rb
 ```
 
-> production
+### production
 ```ruby
 APP_ENV=production ruby app.rb
 ```
