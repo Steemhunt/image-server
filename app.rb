@@ -9,7 +9,7 @@ require 'time'
 Dotenv.load
 Aws.config.update({
   region: 'us-west-2',
-  credentials: Aws::Credentials.new("#{ENV['S3_ACCESS_KEY']}", "#{ENV['S3_SECRET_KEY']}")
+  credentials: Aws::Credentials.new(ENV['S3_ACCESS_KEY'], ENV['S3_SECRET_KEY'])
 })
 set :allow_origin, Sinatra::Base.production? ? "https://steemhunt.com" : "http://localhost:3000 http://localhost:4567"
 set :allow_methods, "GET,HEAD,POST"
@@ -21,18 +21,18 @@ get '/upload' do
   if Sinatra::Base.production?
     status 404
   else
-    "
-    <form action='/upload' method='post' enctype='multipart/form-data'>
-      <input type='file' name='image' value='image-file'></input>
-      <input type='submit'/>
+    """
+    <form action=\"/upload\" method=\"post\" enctype=\"multipart/form-data\">
+      <input type=\"file\" name=\"image\" value=\"image-file\"></input>
+      <input type=\"submit\"/>
     </form>
-    "
+    """
   end
 end
 
 post '/upload' do
   content_type :json
-  uploader = S3Uploader.new('huntimages')
+  uploader = S3Uploader.new(ENV['S3_BUCKET'])
   encoder = FileEncoder.new
   image = params[:image]
 
@@ -82,14 +82,13 @@ class S3Uploader
 end
 
 class FileEncoder
-
   def to_mp4(target_file, options = {})
     default_options = {
       minify: false
     }
     options = default_options.merge!(options)
 
-    temp_mp4 = "./temp/#{SecureRandom.hex(4)}.mp4"
+    temp_mp4 = "./tmp/#{SecureRandom.hex(4)}.mp4"
 
     if options[:minify] # 92~3% minificaiton.
       `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
