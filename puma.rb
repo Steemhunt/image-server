@@ -1,8 +1,8 @@
 root = "#{Dir.getwd}"
 
-bind "unix://#{root}/logs/socket"
-pidfile "#{root}/logs/pid"
-state_path "#{root}/logs/state"
+bind "unix://#{root}/log/socket"
+pidfile "#{root}/log/pid"
+state_path "#{root}/log/state"
 rackup "#{root}/config.ru"
 
 workers Integer(ENV['WEB_CONCURRENCY'] || 4)
