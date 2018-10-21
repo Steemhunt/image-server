@@ -10,7 +10,7 @@ Aws.config.update({
   region: 'us-west-2',
   credentials: Aws::Credentials.new(ENV['S3_ACCESS_KEY'], ENV['S3_SECRET_KEY'])
 })
-set :allow_origin, Sinatra::Base.production? ? "https://steemhunt.com" : "http://localhost:3000 http://localhost:4567"
+set :allow_origin, "https://steemhunt.com http://localhost:3000 http://localhost:4567"
 set :allow_methods, "GET,HEAD,POST"
 set :allow_headers, "content-type,if-modified-since"
 set :expose_headers, "location,link"
