@@ -1,0 +1,1 @@
+web: RACK_ENV=production PORT=7777 bundle exec puma -C puma.rb

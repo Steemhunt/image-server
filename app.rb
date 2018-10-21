@@ -1,12 +1,11 @@
 require 'sinatra'
 require 'sinatra/cors'
+require 'sinatra/reloader' if development?
 require 'aws-sdk-s3'
-require 'dotenv'
+require 'dotenv/load'
 require 'securerandom'
 require 'time'
 
-# Configs
-Dotenv.load
 Aws.config.update({
   region: 'us-west-2',
   credentials: Aws::Credentials.new(ENV['S3_ACCESS_KEY'], ENV['S3_SECRET_KEY'])
@@ -16,46 +15,7 @@ set :allow_methods, "GET,HEAD,POST"
 set :allow_headers, "content-type,if-modified-since"
 set :expose_headers, "location,link"
 
-# Routes
-get '/upload' do
-  if Sinatra::Base.production?
-    status 404
-  else
-    """
-    <form action=\"/upload\" method=\"post\" enctype=\"multipart/form-data\">
-      <input type=\"file\" name=\"image\" value=\"image-file\"></input>
-      <input type=\"submit\"/>
-    </form>
-    """
-  end
-end
-
-post '/upload' do
-  content_type :json
-  uploader = S3Uploader.new(ENV['S3_BUCKET'])
-  encoder = FileEncoder.new
-  image = params[:image]
-
-  uid, filename, file = "#{Time.now.strftime('%Y-%m-%d')}/#{SecureRandom.hex(4)}-#{image[:filename]}", image[:filename], image[:tempfile]
-
-  if filename =~ /\.gif$/
-    # Upload thumbnail
-    uploader.upload(uid.gsub('.gif', '-thumb.mp4'), encoder.to_mp4(file, { thumbnail: true }))
-
-    # Change gif with mp4
-    uid, filename, file = uid.gsub('.gif', '.mp4'), filename.gsub('.gif', '.mp4'), encoder.to_mp4(file)
-  end
-
-  if res = uploader.upload(uid, file)
-    return {
-      response: { name: filename, uid: uid, link: res[:link] },
-      success: true,
-      status: 200
-    }.to_json
-  else
-    status 500
-  end
-end
+configure { set :server, :puma }
 
 # Modules
 class S3Uploader
@@ -101,5 +61,48 @@ class FileEncoder
     end
 
     File.open(temp_mp4)
+  end
+end
+
+class App < Sinatra::Base
+  # Routes
+  get '/upload' do
+    if Sinatra::Base.production?
+      status 404
+    else
+      """
+      <form action=\"/upload\" method=\"post\" enctype=\"multipart/form-data\">
+        <input type=\"file\" name=\"image\" value=\"image-file\"></input>
+        <input type=\"submit\"/>
+      </form>
+      """
+    end
+  end
+
+  post '/upload' do
+    content_type :json
+    uploader = S3Uploader.new(ENV['S3_BUCKET'])
+    encoder = FileEncoder.new
+    image = params[:image]
+
+    uid, filename, file = "#{Time.now.strftime('%Y-%m-%d')}/#{SecureRandom.hex(4)}-#{image[:filename]}", image[:filename], image[:tempfile]
+
+    if filename =~ /\.gif$/
+      # Upload thumbnail
+      uploader.upload(uid.gsub('.gif', '-thumb.mp4'), encoder.to_mp4(file, { thumbnail: true }))
+
+      # Change gif with mp4
+      uid, filename, file = uid.gsub('.gif', '.mp4'), filename.gsub('.gif', '.mp4'), encoder.to_mp4(file)
+    end
+
+    if res = uploader.upload(uid, file)
+      return {
+        response: { name: filename, uid: uid, link: res[:link] },
+        success: true,
+        status: 200
+      }.to_json
+    else
+      status 500
+    end
   end
 end

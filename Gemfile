@@ -6,3 +6,7 @@ gem 'aws-sdk-s3', '~> 1'
 gem 'dotenv-rails', groups: [:development, :test]
 gem 'json'
 gem 'puma'
+
+group :development do
+  gem 'sinatra-contrib'
+end
