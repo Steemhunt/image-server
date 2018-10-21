@@ -39,15 +39,16 @@ post '/upload' do
   uid, filename, file = "#{Time.now.strftime('%Y-%m-%d')}/#{SecureRandom.hex(4)}-#{image[:filename]}", image[:filename], image[:tempfile]
 
   if filename =~ /\.gif$/
-    uploader.upload(uid.gsub('.gif', '-240x240.mp4'), encoder.to_mp4(file, { minify: true })[:file]) # upload minified
-    uid, filename, file = uid.gsub('.gif', '.mp4'), filename.gsub('.gif', '.mp4'), encoder.to_mp4(file)[:file]
+    # Upload thumbnail
+    uploader.upload(uid.gsub('.gif', '-thumb.mp4'), encoder.to_mp4(file, { thumbnail: true }))
+
+    # Change gif with mp4
+    uid, filename, file = uid.gsub('.gif', '.mp4'), filename.gsub('.gif', '.mp4'), encoder.to_mp4(file)
   end
 
   if res = uploader.upload(uid, file)
     return {
-      response: {
-        name: filename, uid: uid, link: res[:link]
-      },
+      response: { name: filename, uid: uid, link: res[:link] },
       success: true,
       status: 200
     }.to_json
@@ -84,22 +85,21 @@ end
 class FileEncoder
   def to_mp4(target_file, options = {})
     default_options = {
-      minify: false
+      thumbnail: false
     }
     options = default_options.merge!(options)
 
-    temp_mp4 = "./tmp/#{SecureRandom.hex(4)}.mp4"
+    temp_mp4 = "./tmp/#{SecureRandom.hex(8)}.mp4"
 
-    if options[:minify] # 92~3% minificaiton.
-      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/4)*2:trunc(ih/4)*2" #{temp_mp4}`
+    # ffmpeg options
+    # - https://trac.ffmpeg.org/wiki/Encode/H.264
+    # - https://trac.ffmpeg.org/wiki/Scaling
+    if options[:thumbnail] # 92~3% minificaiton.
+      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -b:v 0 -crf 25 -vf "scale='min(160,iw)':-1"  #{temp_mp4}`
     else
-      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" #{temp_mp4}`
+      `ffmpeg -y -i #{target_file.path} -movflags faststart -pix_fmt yuv420p -b:v 0 -crf 25 -vf -vf "scale='min(880,iw)':-1  #{temp_mp4}`
     end
 
-    mp4_file = File.open(temp_mp4)
-
-    return {
-      file: mp4_file
-    }
+    File.open(temp_mp4)
   end
 end

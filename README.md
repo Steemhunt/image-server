@@ -13,7 +13,7 @@ bundle
 bundle exec ruby app.rb
 ```
 
-#### Droduction
+#### Production
 ```ruby
 APP_ENV=production ruby app.rb
 ```
