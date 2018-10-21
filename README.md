@@ -1,4 +1,4 @@
-# Steemhunt image processing server
+# DEPRECATED: Steemhunt image processing server
 
 ### Dependencies
 - ruby 2.5.1
